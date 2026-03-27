@@ -31,6 +31,18 @@ allowed-tools:
 - `bookmark_tweet` — params: `tweet_id`
 - `delete_tweet` — params: `tweet_id`
 
+### Follow (via x-cli.py, not MCP)
+
+The MCP server does not support follow. Use x-cli.py instead:
+
+```bash
+X="uv run ~/.claude/skills/saltbo/agent-skills/skills/x-ops/x-cli.py"
+$X follow <user_id>
+$X unfollow <user_id>
+```
+
+Requires env vars: TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET (already set globally).
+
 ### Read
 - `search_twitter` — params: `query`, `count`, `product` (Top/Latest)
 - `get_user_mentions` — params: `user_id`, `count`
@@ -70,6 +82,7 @@ Wait 2-3 seconds between write operations.
 
 ## Search Query Rotation
 
+### Engagement queries (for replies)
 Rotate 2-3 per cycle:
 - `claude code`
 - `AI coding agent`
@@ -79,6 +92,15 @@ Rotate 2-3 per cycle:
 - `AI developer tools`
 - `coding agent workflow`
 - `claude code tip` OR `claude code trick`
+
+### Connect queries (for finding people to follow)
+Use 1 per cycle to find builders/creators actively seeking connections:
+- `"looking to connect" developer AI`
+- `"build in public" AI tools`
+- `"indie hacker" AI agent`
+- `"open source" "coding agent"`
+- `"follow me" developer "AI tools"` (filter for real builders, skip spammers)
+- `"shipping daily" AI code`
 
 ## Task Standards
 
