@@ -36,7 +36,7 @@ allowed-tools:
 The MCP server does not support follow. Use x-cli.py instead:
 
 ```bash
-X="uv run ~/.claude/skills/saltbo/agent-skills/skills/x-ops/x-cli.py"
+X="uv run .agents/skills/x-ops/x-cli.py"
 $X follow <user_id>
 $X unfollow <user_id>
 ```
