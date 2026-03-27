@@ -4,7 +4,6 @@ description: X (Twitter) account operations via MCP tools — post, reply, like,
 user-invocable: false
 allowed-tools:
   - Bash
-  - Read
   - mcp__x-twitter__post_tweet
   - mcp__x-twitter__search_twitter
   - mcp__x-twitter__get_user_mentions
@@ -22,58 +21,148 @@ allowed-tools:
   - mcp__x-twitter__delete_tweet
 ---
 
-# X Ops — MCP-Based X Account Operations
+# X Ops — Operational Procedures
 
-You operate an X (Twitter) account through the `x-twitter` MCP server tools.
-All interactions use the official X API v2 — no browser automation.
+## MCP Tools Reference
 
-## Available MCP Tools
+### Write
+- `post_tweet` — params: `text`, `reply_to` (tweet ID), `media_paths`, `tags`
+- `favorite_tweet` — params: `tweet_id`
+- `bookmark_tweet` — params: `tweet_id`
+- `delete_tweet` — params: `tweet_id`
 
-### Write Operations
-
-- `mcp__x-twitter__post_tweet` — Post a tweet. Params: `text` (required), `reply_to` (tweet ID for replies), `media_paths`, `tags`
-- `mcp__x-twitter__favorite_tweet` — Like a tweet. Params: `tweet_id`
-- `mcp__x-twitter__bookmark_tweet` — Bookmark a tweet. Params: `tweet_id`
-- `mcp__x-twitter__delete_tweet` — Delete a tweet. Params: `tweet_id`
-
-### Read Operations
-
-- `mcp__x-twitter__search_twitter` — Search tweets. Params: `query`, `count`, `product` (Top/Latest)
-- `mcp__x-twitter__get_user_mentions` — Get mentions. Params: `user_id`, `count`
-- `mcp__x-twitter__get_user_by_screen_name` — Lookup user. Params: `screen_name`
-- `mcp__x-twitter__get_user_profile` — Get profile details. Params: `user_id`
-- `mcp__x-twitter__get_tweet_details` — Get a single tweet. Params: `tweet_id`
-- `mcp__x-twitter__get_latest_timeline` — Following timeline. Params: `count`
-- `mcp__x-twitter__get_timeline` — For You timeline. Params: `count`
-- `mcp__x-twitter__get_user_followers` — Get followers. Params: `user_id`, `count`
-- `mcp__x-twitter__get_user_following` — Get following. Params: `user_id`, `count`
-- `mcp__x-twitter__get_trends` — Get trending topics.
-
-## Logging
-
-Log every action to the task:
-```bash
-ak task log <task-id> "Posted tweet: <content preview>"
-ak task log <task-id> "Liked tweet by @<user>: <content preview>"
-ak task log <task-id> "Replied to @<user>: <content preview>"
-```
+### Read
+- `search_twitter` — params: `query`, `count`, `product` (Top/Latest)
+- `get_user_mentions` — params: `user_id`, `count`
+- `get_user_by_screen_name` — params: `screen_name`
+- `get_user_profile` — params: `user_id`
+- `get_tweet_details` — params: `tweet_id`
+- `get_latest_timeline` — params: `count`
+- `get_timeline` — params: `count`
+- `get_user_followers` — params: `user_id`, `count`
+- `get_user_following` — params: `user_id`, `count`
+- `get_trends`
 
 ## Rate Limits (X API v2)
 
-| Operation | Limit / 15min |
-|-----------|--------------|
-| search    | 60           |
-| mentions  | 10           |
-| user lookup | 95         |
-| tweet by id | 300        |
-| post tweet | 100/day      |
-| like      | 1000/day     |
+| Operation | Limit |
+|-----------|-------|
+| search    | 60 / 15min |
+| mentions  | 10 / 15min |
+| user lookup | 95 / 15min |
+| tweet by id | 300 / 15min |
+| post tweet | 100 / day |
+| like      | 1000 / day |
 
-Wait 2-3 seconds between write operations to avoid rate limits.
+Wait 2-3 seconds between write operations.
 
-## Rules
+## Cycle Workflow
 
-- **Never follow/unfollow** unless the task specifically requests it.
-- **Never DM** unless the task specifically requests it.
-- **Never delete tweets** unless the task specifically requests it.
-- **If auth fails**, log the error and stop. Do not retry.
+1. Search using the queries specified in the task description
+2. Find 6-8 candidate posts from high-reach accounts (prefer posts under 2-4 hours old)
+3. Reply one by one. Skip 403s. Keep going until target reply count is met.
+4. Check mentions: `get_user_mentions` with user_id from task context
+5. Reply to actionable mentions
+6. Follow relevant developers (check profile before following)
+7. Post 1 original tweet per the task plan
+8. Log all actions per Comment Standards
+9. Create next task per Task Standards
+
+## Search Query Rotation
+
+Rotate 2-3 per cycle:
+- `claude code`
+- `AI coding agent`
+- `cursor AI` OR `codex`
+- `multi-agent` AND `code`
+- `vibe coding`
+- `AI developer tools`
+- `coding agent workflow`
+- `claude code tip` OR `claude code trick`
+
+## Task Standards
+
+### Title format
+`x-ops #<seq>: <focus keyword>`
+
+Examples:
+- `x-ops #3: claude-code-tips engagement`
+- `x-ops #4: vibe-coding trend + codex thread`
+
+### Description template
+```
+## Search queries
+- <query 1>
+- <query 2>
+
+## Tweet plan
+- Type: <hot take | build-in-public | tip | comparison | observation>
+- Topic: <what to write about>
+
+## Follow-up from last cycle
+- <conversation to continue, or "none">
+
+## Notes from last cycle
+- <observations about what worked or didn't>
+```
+
+### Self-continuation
+After completing a cycle, create next task:
+```bash
+ak create task \
+  --board <board-id> \
+  --assign-to <self-agent-id> \
+  --scheduled-at <1 hour from now, ISO 8601> \
+  --title "x-ops #<next-seq>: <focus>" \
+  --description "<filled template>"
+```
+
+## Comment Standards
+
+Post comments using `ak task log <task-id> "<message>"`:
+
+**1 — Start**
+```
+CYCLE START | Queries: <q1>, <q2> | Targets found: <n>
+```
+
+**2 — Replies**
+```
+REPLIES (<success>/<attempted>)
+✓ @<user> (<followers>) — "<first 60 chars of reply>" [tweet:<id>]
+✗ @<user> — 403 reply restricted
+```
+
+**3 — Mentions**
+```
+MENTIONS (<count> new)
+↩ @<user> — "<reply preview>" [tweet:<id>]
+— no actionable mentions
+```
+
+**4 — Follows**
+```
+FOLLOWS (<count>)
++ @<user> (<followers>) — <reason>
+```
+
+**5 — Tweet**
+```
+TWEET [<id>]
+"<full tweet text>"
+Type: <type>
+```
+
+**6 — Summary**
+```
+CYCLE COMPLETE
+Replies: <n>/<n> | Mentions: <n> | Follows: <n> | Tweet: 1
+Next: <task-id> scheduled <time>
+```
+
+## Error Handling
+
+- 403 on reply → skip target, find another. Do NOT count as success.
+- Rate limit error → wait until reset, then retry.
+- Auth error → stop and report. Do not retry.
+- Other errors → retry once after 5 seconds.
