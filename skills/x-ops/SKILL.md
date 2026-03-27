@@ -72,13 +72,14 @@ Wait 2-3 seconds between write operations.
 
 1. Search using the queries specified in the task description
 2. Find 6-8 candidate posts from high-reach accounts (prefer posts under 2-4 hours old)
-3. Reply one by one. Skip 403s. Keep going until target reply count is met.
-4. Check mentions: `get_user_mentions` with user_id from task context
-5. Reply to actionable mentions
-6. Follow relevant developers (check profile before following)
-7. Post 1 original tweet per the task plan
-8. Log all actions per Comment Standards
-9. Create next task per Task Standards
+3. Pre-check each candidate with `get_tweet_details` — only attempt reply if reply_count > 0
+4. Reply one by one. Skip 403s. Keep going until target reply count is met.
+5. Check mentions: `get_user_mentions` with user_id from task context
+6. Reply to actionable mentions
+7. Follow relevant developers using x-cli.py (check profile before following)
+8. Post original tweet ONLY if task description includes a tweet plan. Max 3 original tweets per day — if unsure how many were posted today, skip.
+9. Log all actions per Comment Standards
+10. Create next task per Task Standards
 
 ## Search Query Rotation
 
