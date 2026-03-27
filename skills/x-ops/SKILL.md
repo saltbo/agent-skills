@@ -182,6 +182,12 @@ Replies: <n>/<n> | Mentions: <n> | Follows: <n> | Tweet: 1
 Next: <task-id> scheduled <time>
 ```
 
+## Reply Pre-check (avoid 403)
+
+Before replying to a post, use `get_tweet_details` to check if it has replies (reply_count > 0). Posts with existing replies from other users are open for replies. Posts with 0 replies from a high-follower account likely have reply restrictions enabled — skip them.
+
+Also skip posts that contain "subscribers only" or "verified only" language.
+
 ## Error Handling
 
 - 403 on reply → skip target, find another. Do NOT count as success.
