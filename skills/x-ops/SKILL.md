@@ -1,59 +1,41 @@
 ---
 name: x-ops
-description: X (Twitter) account operations via MCP tools — post, reply, like, search, monitor mentions
+description: X (Twitter) account operations via x-cli.py — post, reply, like, search, follow
 user-invocable: false
 allowed-tools:
   - Bash
-  - mcp__x-twitter__post_tweet
-  - mcp__x-twitter__search_twitter
-  - mcp__x-twitter__get_user_mentions
-  - mcp__x-twitter__get_user_by_screen_name
-  - mcp__x-twitter__get_user_profile
-  - mcp__x-twitter__favorite_tweet
-  - mcp__x-twitter__unfavorite_tweet
-  - mcp__x-twitter__get_tweet_details
-  - mcp__x-twitter__get_timeline
-  - mcp__x-twitter__get_latest_timeline
-  - mcp__x-twitter__get_user_followers
-  - mcp__x-twitter__get_user_following
-  - mcp__x-twitter__get_trends
-  - mcp__x-twitter__bookmark_tweet
-  - mcp__x-twitter__delete_tweet
 ---
 
 # X Ops — Operational Procedures
 
-## MCP Tools Reference
-
-### Write
-- `post_tweet` — params: `text`, `reply_to` (tweet ID), `media_paths`, `tags`
-- `favorite_tweet` — params: `tweet_id`
-- `bookmark_tweet` — params: `tweet_id`
-- `delete_tweet` — params: `tweet_id`
-
-### Follow (via x-cli.py, not MCP)
-
-The MCP server does not support follow. Use x-cli.py instead:
+All operations use `x-cli.py` (tweepy + official X API v2). Set the alias at the start of every session:
 
 ```bash
 X="uv run .agents/skills/x-ops/x-cli.py"
-$X follow <user_id>
-$X unfollow <user_id>
 ```
 
-Requires env vars: TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET (already set globally).
+## Commands
 
 ### Read
-- `search_twitter` — params: `query`, `count`, `product` (Top/Latest)
-- `get_user_mentions` — params: `user_id`, `count`
-- `get_user_by_screen_name` — params: `screen_name`
-- `get_user_profile` — params: `user_id`
-- `get_tweet_details` — params: `tweet_id`
-- `get_latest_timeline` — params: `count`
-- `get_timeline` — params: `count`
-- `get_user_followers` — params: `user_id`, `count`
-- `get_user_following` — params: `user_id`, `count`
-- `get_trends`
+```bash
+$X profile <username>          # full profile with followers/following/tweet count
+$X tweet <tweet_id>            # tweet with reply_count, likes, views, author_followers
+$X search "<query>" [count]    # search recent tweets (min 10, max 100)
+$X mentions <user_id> [count]  # mentions of a user
+```
+
+All read commands return JSON with full metrics (reply_count, followers, etc).
+
+### Write
+```bash
+$X post "<text>"               # post a tweet
+$X reply <tweet_id> "<text>"   # reply to a tweet
+$X like <tweet_id>             # like a tweet
+$X follow <user_id>            # follow a user
+$X unfollow <user_id>          # unfollow a user
+```
+
+Write commands return JSON confirmation with the created tweet ID.
 
 ## Rate Limits (X API v2)
 
@@ -61,23 +43,24 @@ Requires env vars: TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TW
 |-----------|-------|
 | search    | 60 / 15min |
 | mentions  | 10 / 15min |
-| user lookup | 95 / 15min |
-| tweet by id | 300 / 15min |
-| post tweet | 100 / day |
+| profile   | 95 / 15min |
+| tweet     | 300 / 15min |
+| post      | 100 / day |
 | like      | 1000 / day |
+| follow    | 15 / 15min |
 
 Wait 2-3 seconds between write operations.
 
 ## Cycle Workflow
 
-1. Search using the queries specified in the task description
-2. Find 6-8 candidate posts from high-reach accounts (prefer posts under 2-4 hours old)
-3. Pre-check each candidate with `get_tweet_details` — only attempt reply if reply_count > 0
-4. Reply one by one. Skip 403s. Keep going until target reply count is met.
-5. Check mentions: `get_user_mentions` with user_id from task context
+1. Check follower count: `$X profile rdsaltbo`
+2. Search using the queries specified in the task description
+3. For each candidate post, check `$X tweet <id>` — only reply if `replies > 0` (proves replies are open). Also check `author_followers` is within target range for current tier.
+4. Reply one by one: `$X reply <tweet_id> "<text>"`. Skip 403s. Keep going until target reply count is met.
+5. Check mentions: `$X mentions 726438383401074688`
 6. Reply to actionable mentions
-7. Follow relevant developers using x-cli.py (check profile before following)
-8. Post original tweet ONLY if task description includes a tweet plan. Max 3 original tweets per day — if unsure how many were posted today, skip.
+7. Follow relevant developers: check `$X profile <username>` first, then `$X follow <user_id>`
+8. Post original tweet only if task description includes a tweet plan
 9. Log all actions per Comment Standards
 10. Create next task per Task Standards
 
@@ -100,17 +83,19 @@ Use 1 per cycle to find builders/creators actively seeking connections:
 - `"build in public" AI tools`
 - `"indie hacker" AI agent`
 - `"open source" "coding agent"`
-- `"follow me" developer "AI tools"` (filter for real builders, skip spammers)
 - `"shipping daily" AI code`
+
+## Reply Pre-check
+
+Before replying, run `$X tweet <id>` and check:
+- `replies > 0` — someone else has replied, so replies are open
+- `author_followers` is within target range for current tier
+Skip if either check fails.
 
 ## Task Standards
 
 ### Title format
 `x-ops #<seq>: <focus keyword>`
-
-Examples:
-- `x-ops #3: claude-code-tips engagement`
-- `x-ops #4: vibe-coding trend + codex thread`
 
 ### Description template
 ```
@@ -121,6 +106,7 @@ Examples:
 ## Tweet plan
 - Type: <hot take | build-in-public | tip | comparison | observation>
 - Topic: <what to write about>
+(or "None — replies + connect only cycle")
 
 ## Follow-up from last cycle
 - <conversation to continue, or "none">
@@ -130,14 +116,16 @@ Examples:
 ```
 
 ### Self-continuation
-After completing a cycle, create next task:
+After completing a cycle, create next task. MUST include --scheduled-at:
 ```bash
 ak create task \
-  --board <board-id> \
-  --assign-to <self-agent-id> \
+  --board jb21kfv6 \
+  --assign-to e6f896b845f81e93 \
   --scheduled-at <1 hour from now, ISO 8601> \
   --title "x-ops #<next-seq>: <focus>" \
-  --description "<filled template>"
+  --description "<filled template>" \
+  --priority medium \
+  --labels "ops,engagement,connect"
 ```
 
 ## Comment Standards
@@ -146,7 +134,7 @@ Post comments using `ak task log <task-id> "<message>"`:
 
 **1 — Start**
 ```
-CYCLE START | Queries: <q1>, <q2> | Targets found: <n>
+CYCLE START | Followers: <n> | Tier: <phase> | Queries: <q1>, <q2>
 ```
 
 **2 — Replies**
@@ -154,6 +142,7 @@ CYCLE START | Queries: <q1>, <q2> | Targets found: <n>
 REPLIES (<success>/<attempted>)
 ✓ @<user> (<followers>) — "<first 60 chars of reply>" [tweet:<id>]
 ✗ @<user> — 403 reply restricted
+⊘ @<user> — skipped (replies:0 or out of tier range)
 ```
 
 **3 — Mentions**
@@ -169,7 +158,7 @@ FOLLOWS (<count>)
 + @<user> (<followers>) — <reason>
 ```
 
-**5 — Tweet**
+**5 — Tweet** (only if posted)
 ```
 TWEET [<id>]
 "<full tweet text>"
@@ -178,20 +167,14 @@ Type: <type>
 
 **6 — Summary**
 ```
-CYCLE COMPLETE
-Replies: <n>/<n> | Mentions: <n> | Follows: <n> | Tweet: 1
+CYCLE COMPLETE | Followers: <n>
+Replies: <n>/<n> | Mentions: <n> | Follows: <n> | Tweet: <0 or 1>
 Next: <task-id> scheduled <time>
 ```
-
-## Reply Pre-check (avoid 403)
-
-Before replying to a post, use `get_tweet_details` to check if it has replies (reply_count > 0). Posts with existing replies from other users are open for replies. Posts with 0 replies from a high-follower account likely have reply restrictions enabled — skip them.
-
-Also skip posts that contain "subscribers only" or "verified only" language.
 
 ## Error Handling
 
 - 403 on reply → skip target, find another. Do NOT count as success.
 - Rate limit error → wait until reset, then retry.
 - Auth error → stop and report. Do not retry.
-- Other errors → retry once after 5 seconds.
+- If `ak create task` fails → retry once after 10 seconds.
