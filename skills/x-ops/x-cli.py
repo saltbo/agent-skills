@@ -8,8 +8,20 @@
 import json
 import os
 import sys
+from pathlib import Path
 
 import tweepy
+
+ENV_FILE = Path.home() / ".config" / "x-ops" / ".env"
+
+def _load_env():
+    if ENV_FILE.exists():
+        for line in ENV_FILE.read_text().splitlines():
+            if "=" in line and not line.startswith("#"):
+                k, v = line.split("=", 1)
+                os.environ.setdefault(k.strip(), v.strip())
+
+_load_env()
 
 CLIENT = tweepy.Client(
     consumer_key=os.environ["TWITTER_API_KEY"],
