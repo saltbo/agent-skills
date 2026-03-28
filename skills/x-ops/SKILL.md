@@ -51,25 +51,26 @@ Write commands return JSON confirmation with the created tweet ID.
 
 Wait 2-3 seconds between write operations.
 
+## API Constraint
+
+X API blocks replies/quotes to accounts that haven't mentioned @rdsaltbo. Do NOT attempt replies to strangers — always 403. Only reply to mentions.
+
 ## Cycle Workflow
 
-**Minimize Bash calls.** Every `$X` call is a tool round-trip. Combine and reuse data.
+**Minimize Bash calls.** Every `$X` call is a tool round-trip. Target: 8-12 calls per cycle.
 
-1. Run `$X profile rdsaltbo` — get follower count, determine tier
-2. Run `$X search "<query>" 20` for each query in task description. Search results already include `replies`, `author_followers` — use these directly for pre-check. No need to call `$X tweet` separately.
-3. From search results, filter candidates: `replies > 0` AND `author_followers` in tier range. Attempt replies on filtered candidates only.
-4. Run `$X mentions 726438383401074688` — reply to actionable ones
-5. Follow: pick users from search results whose profiles look good (already have author_followers), then `$X follow <user_id>`
-6. Post original tweet only if task description includes a tweet plan
-7. Log all actions per Comment Standards
-8. Create next task per Task Standards
-
-**Target: complete a cycle in 10-15 Bash calls, not 40+.**
+1. `$X profile rdsaltbo` — get follower count, determine tier (1 call)
+2. `$X search "<query>" 20` — run 1-2 searches from task description (1-2 calls)
+3. `$X mentions 726438383401074688` — check mentions (1 call)
+4. Reply to actionable mentions only — do NOT reply to strangers (0-2 calls)
+5. Like 5-8 posts from search results — pick substantive posts from target developers (5-8 calls, can batch quickly)
+6. Follow 3-5 developers from search results — use author_id from search data directly (3-5 calls)
+7. Post 1 original tweet based on what you observed in search (1 call)
+8. Log actions + create next task (2 calls)
 
 ## Search Query Rotation
 
-### Engagement queries (for replies)
-Rotate 2-3 per cycle:
+Use 1-2 per cycle. These find both content inspiration and like/follow targets:
 - `claude code`
 - `AI coding agent`
 - `cursor AI` OR `codex`
@@ -77,29 +78,13 @@ Rotate 2-3 per cycle:
 - `vibe coding`
 - `AI developer tools`
 - `coding agent workflow`
-- `claude code tip` OR `claude code trick`
-
-### Connect queries (for finding people to follow)
-Use 1 per cycle to find builders/creators actively seeking connections:
-- `"looking to connect" developer AI`
 - `"build in public" AI tools`
+- `"looking to connect" developer AI`
 - `"indie hacker" AI agent`
-- `"open source" "coding agent"`
-- `"shipping daily" AI code`
-
-## Reply Pre-check
-
-Use the `replies` and `author_followers` fields from search results directly — do NOT call `$X tweet` separately for each candidate. Only reply to posts where:
-- `replies > 0` — someone else has replied, so replies are open
-- `author_followers` is within target range for current tier
-
-NOTE: X API may block replies from accounts without prior mutual engagement. If all replies return 403, pivot to follow + original tweets and reply only to mentions.
 
 ## De-duplication
 
-Do NOT reply to or engage with the same person more than once per cycle. Check the task description's "Follow-up from last cycle" section — if you already replied to someone in the last 2 cycles, skip them unless they directly asked you a question in a mention.
-
-This prevents spamming the same people when cycles run close together.
+Do NOT like/follow the same person more than once per cycle. Check the task description's "Follow-up from last cycle" — if you already followed someone in previous cycles, skip them.
 
 ## Task Standards
 
@@ -160,28 +145,26 @@ Post comments using `ak task log <task-id> "<message>"`:
 CYCLE START | Followers: <n> | Tier: <phase> | Queries: <q1>, <q2>
 ```
 
-**2 — Replies**
+**2 — Likes**
 ```
-REPLIES (<success>/<attempted>)
-✓ @<user> (<followers>) — "<first 60 chars of reply>" [tweet:<id>]
-✗ @<user> — 403 reply restricted
-⊘ @<user> — skipped (replies:0 or out of tier range)
+LIKES (<count>)
+♥ @<user> (<followers>) — "<first 50 chars of their post>" [tweet:<id>]
 ```
 
-**3 — Mentions**
+**3 — Follows**
+```
+FOLLOWS (<count>)
++ @<user> (<followers>) — <reason>
+```
+
+**4 — Mentions**
 ```
 MENTIONS (<count> new)
 ↩ @<user> — "<reply preview>" [tweet:<id>]
 — no actionable mentions
 ```
 
-**4 — Follows**
-```
-FOLLOWS (<count>)
-+ @<user> (<followers>) — <reason>
-```
-
-**5 — Tweet** (only if posted)
+**5 — Tweet**
 ```
 TWEET [<id>]
 "<full tweet text>"
@@ -191,7 +174,7 @@ Type: <type>
 **6 — Summary**
 ```
 CYCLE COMPLETE | Followers: <n>
-Replies: <n>/<n> | Mentions: <n> | Follows: <n> | Tweet: <0 or 1>
+Likes: <n> | Follows: <n> | Mentions replied: <n> | Tweet: <0 or 1>
 Next: <task-id> scheduled <time>
 ```
 
