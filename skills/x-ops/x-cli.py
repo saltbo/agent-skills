@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["tweepy"]
+# dependencies = ["tweepy", "requests"]
 # ///
 """Complete X (Twitter) CLI using official API v2 via tweepy."""
 
@@ -142,7 +142,22 @@ def cmd_unfollow(args):
     print(json.dumps({"ok": True, "unfollowed": args[0]}))
 
 
+def cmd_usage(args):
+    """Show API usage for current billing period."""
+    import requests
+    bt = os.environ.get("TWITTER_BEARER_TOKEN", "")
+    r = requests.get("https://api.x.com/2/usage/tweets",
+                      headers={"Authorization": f"Bearer {bt}"})
+    d = r.json().get("data", {})
+    print(json.dumps({
+        "used": int(d.get("project_usage", 0)),
+        "cap": int(d.get("project_cap", 0)),
+        "reset_day": d.get("cap_reset_day"),
+    }, indent=2))
+
+
 COMMANDS = {
+    "usage": cmd_usage,
     "profile": cmd_profile,
     "tweet": cmd_tweet,
     "search": cmd_search,
