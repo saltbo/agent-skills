@@ -130,7 +130,7 @@ This prevents spamming the same people when cycles run close together.
 
 Calculate the scheduled time first, then create the task:
 ```bash
-NEXT=$(date -u -v+1H +"%Y-%m-%dT%H:%M:%SZ")
+NEXT=$(date -u -v+2H +"%Y-%m-%dT%H:%M:%SZ")
 ak create task \
   --board jb21kfv6 \
   --assign-to e6f896b845f81e93 \
