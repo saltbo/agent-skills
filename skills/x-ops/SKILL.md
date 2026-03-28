@@ -92,6 +92,12 @@ Before replying, run `$X tweet <id>` and check:
 - `author_followers` is within target range for current tier
 Skip if either check fails.
 
+## De-duplication
+
+Do NOT reply to or engage with the same person more than once per cycle. Check the task description's "Follow-up from last cycle" section — if you already replied to someone in the last 2 cycles, skip them unless they directly asked you a question in a mention.
+
+This prevents spamming the same people when cycles run close together.
+
 ## Task Standards
 
 ### Title format
@@ -116,17 +122,23 @@ Skip if either check fails.
 ```
 
 ### Self-continuation
-After completing a cycle, create next task. MUST include --scheduled-at:
+
+⚠️ CRITICAL: You MUST include --scheduled-at. Without it, the task runs immediately and creates an infinite loop that spams the account. This has happened before — do NOT skip this parameter.
+
+Calculate the scheduled time first, then create the task:
 ```bash
+NEXT=$(date -u -v+1H +"%Y-%m-%dT%H:%M:%SZ")
 ak create task \
   --board jb21kfv6 \
   --assign-to e6f896b845f81e93 \
-  --scheduled-at <1 hour from now, ISO 8601> \
+  --scheduled-at "$NEXT" \
   --title "x-ops #<next-seq>: <focus>" \
   --description "<filled template>" \
   --priority medium \
   --labels "ops,engagement,connect"
 ```
+
+Verify the created task has a scheduled_at value in the response. If not, cancel it immediately.
 
 ## Comment Standards
 
