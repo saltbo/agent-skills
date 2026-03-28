@@ -53,16 +53,18 @@ Wait 2-3 seconds between write operations.
 
 ## Cycle Workflow
 
-1. Check follower count: `$X profile rdsaltbo`
-2. Search using the queries specified in the task description
-3. For each candidate post, check `$X tweet <id>` — only reply if `replies > 0` (proves replies are open). Also check `author_followers` is within target range for current tier.
-4. Reply one by one: `$X reply <tweet_id> "<text>"`. Skip 403s. Keep going until target reply count is met.
-5. Check mentions: `$X mentions 726438383401074688`
-6. Reply to actionable mentions
-7. Follow relevant developers: check `$X profile <username>` first, then `$X follow <user_id>`
-8. Post original tweet only if task description includes a tweet plan
-9. Log all actions per Comment Standards
-10. Create next task per Task Standards
+**Minimize Bash calls.** Every `$X` call is a tool round-trip. Combine and reuse data.
+
+1. Run `$X profile rdsaltbo` — get follower count, determine tier
+2. Run `$X search "<query>" 20` for each query in task description. Search results already include `replies`, `author_followers` — use these directly for pre-check. No need to call `$X tweet` separately.
+3. From search results, filter candidates: `replies > 0` AND `author_followers` in tier range. Attempt replies on filtered candidates only.
+4. Run `$X mentions 726438383401074688` — reply to actionable ones
+5. Follow: pick users from search results whose profiles look good (already have author_followers), then `$X follow <user_id>`
+6. Post original tweet only if task description includes a tweet plan
+7. Log all actions per Comment Standards
+8. Create next task per Task Standards
+
+**Target: complete a cycle in 10-15 Bash calls, not 40+.**
 
 ## Search Query Rotation
 
@@ -87,10 +89,11 @@ Use 1 per cycle to find builders/creators actively seeking connections:
 
 ## Reply Pre-check
 
-Before replying, run `$X tweet <id>` and check:
+Use the `replies` and `author_followers` fields from search results directly — do NOT call `$X tweet` separately for each candidate. Only reply to posts where:
 - `replies > 0` — someone else has replied, so replies are open
 - `author_followers` is within target range for current tier
-Skip if either check fails.
+
+NOTE: X API may block replies from accounts without prior mutual engagement. If all replies return 403, pivot to follow + original tweets and reply only to mentions.
 
 ## De-duplication
 
