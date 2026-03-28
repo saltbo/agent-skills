@@ -128,9 +128,17 @@ This prevents spamming the same people when cycles run close together.
 
 ⚠️ CRITICAL: You MUST include --scheduled-at. Without it, the task runs immediately and creates an infinite loop that spams the account. This has happened before — do NOT skip this parameter.
 
-Calculate the scheduled time first, then create the task:
+Calculate the scheduled time with a random offset (avoid exact intervals — looks robotic):
 ```bash
-NEXT=$(date -u -v+2H +"%Y-%m-%dT%H:%M:%SZ")
+OFFSET=$((110 + RANDOM % 40))m  # 110-150 minutes (roughly 2h with jitter)
+NEXT=$(date -u -v+${OFFSET} +"%Y-%m-%dT%H:%M:%SZ")
+
+# Check if NEXT falls in quiet hours (UTC 06:00-14:00 = EST 01:00-09:00 = PST 22:00-06:00)
+# If so, push to 14:00 UTC (09:00 EST / 06:00 PST)
+NEXT_HOUR=$(date -u -v+${OFFSET} +"%H")
+if [ "$NEXT_HOUR" -ge 6 ] && [ "$NEXT_HOUR" -lt 14 ]; then
+  NEXT=$(date -u -v+1d +"%Y-%m-%dT14:%M:%SZ")  # next day 14:00 UTC
+fi
 ak create task \
   --board jb21kfv6 \
   --assign-to e6f896b845f81e93 \
